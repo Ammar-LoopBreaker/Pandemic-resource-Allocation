@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MECHAFORCE | Admin Portal</title>
+    <script src="papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary-grad: linear-gradient(135deg, #2c3e50 0%, #000000 100%); --accent: #e74c3c; --success: #27ae60; --danger: #c0392b; }
+        body { font-family: 'Poppins', sans-serif; margin: 0; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        /* Nav */
+        .nav-bar { width: 100%; background: #2c3e50; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; color: white; box-sizing: border-box; }
+        .home-btn { text-decoration: none; color: white; font-weight: 600; display: flex; align-items: center; gap: 10px; transition: 0.3s; }
+        .home-btn:hover { color: var(--accent); }
+
+        /* Header */
+        .header { width: 100%; background: var(--primary-grad); padding: 40px 0 80px; text-align: center; color: white; margin-bottom: -40px; }
+        .logo { font-size: 32px; font-weight: 800; letter-spacing: 2px; }
+
+        /* Search */
+        .search-container { width: 850px; background: white; padding: 20px; border-radius: 50px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); display: flex; gap: 15px; position: relative; z-index: 10; }
+        select { padding: 15px 25px; border-radius: 40px; border: none; background: #f1f3f6; font-weight: 600; cursor: pointer; outline: none; }
+        .input-group { flex: 1; position: relative; }
+        input { width: 100%; padding: 15px 25px; border-radius: 40px; border: none; background: #f1f3f6; font-size: 16px; outline: none; }
+        .suggestion-box { position: absolute; top: 110%; left: 15px; right: 15px; background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); max-height: 300px; overflow-y: auto; display: none; z-index: 100; }
+        .suggestion-item { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #f5f5f5; }
+        .suggestion-item:hover { background: #f8f9fa; color: var(--accent); }
+
+        /* Card */
+        .hospital-card { width: 900px; background: white; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin: 50px 0; overflow: hidden; display: none; animation: floatUp 0.6s ease; }
+        @keyframes floatUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .card-header { padding: 30px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+        .card-body { padding: 40px; background: #fafbff; display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px; }
+
+        /* Resources */
+        .resource-item { background: white; padding: 25px; border-radius: 20px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.03); }
+        .icon-circle { width: 50px; height: 50px; margin: 0 auto 15px; background: #fceceb; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 20px; }
+        .res-count { font-size: 48px; font-weight: 700; color: #2d3436; margin: 5px 0 10px; }
+        .res-count.reduced { color: var(--danger); animation: pulse 0.4s; }
+        @keyframes pulse { 50% { transform: scale(1.1); } }
+        
+        .status-text { font-size: 13px; font-weight: 700; margin-bottom: 20px; min-height: 20px; }
+        .status-text.not-available { color: var(--danger); }
+        .status-text.available { color: var(--success); }
+
+        /* Buttons */
+        .btn-group { display: flex; background: #f1f2f6; border-radius: 12px; padding: 5px; gap: 5px; }
+        .btn { flex: 1; border: none; padding: 12px 0; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.3s; background: transparent; color: #a4b0be; }
+        .btn.yes:hover { color: var(--danger); background: white; }
+        .btn.yes.active { background: var(--danger); color: white; box-shadow: 0 4px 10px rgba(192, 57, 43, 0.3); }
+        .btn.no:hover { color: var(--success); background: white; }
+        .btn.no.active { background: var(--success); color: white; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3); }
+
+        /* Footer */
+        .card-footer { grid-column: span 2; background: #2c3e50; color: white; border-radius: 15px; padding: 20px; display: flex; justify-content: space-around; }
+        .footer-val { font-size: 20px; font-weight: 700; }
+        .footer-val span { font-size: 12px; font-weight: 400; opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <div class="nav-bar">
+        <a href="index.html" class="home-btn"><i class="fas fa-arrow-left"></i> Back to Home</a>
+        <div>ADMIN MODE</div>
+    </div>
+    <div class="header">
+        <div class="logo">ADMIN CONSOLE</div>
+        <div style="opacity:0.8">Resource Management & Allocation</div>
+    </div>
+
+    <div class="search-container">
+        <select id="districtFilter"><option value="All">All Districts</option></select>
+        <div class="input-group">
+            <input type="text" id="searchInput" placeholder="Search Hospital Name..." autocomplete="off">
+            <div id="suggestionBox" class="suggestion-box"></div>
+        </div>
+    </div>
+
+    <div id="hospitalCard" class="hospital-card">
+        <div class="card-header"><h2 id="dispName">Name</h2><p id="dispDistrict">Loc</p></div>
+        <div class="card-body">
+            <div class="resource-item">
+                <div class="icon-circle"><i class="fas fa-bed"></i></div>
+                <div style="font-size:12px; font-weight:800; color:#b2bec3;">AVAILABLE BEDS</div>
+                <div class="res-count" id="count-bed">0</div>
+                <div class="status-text available" id="status-bed">Status: Available</div>
+                <div class="btn-group" id="group-bed"><button class="btn yes" onclick="setResource('bed', 'yes')">YES</button><button class="btn no active" onclick="setResource('bed', 'no')">NO</button></div>
+            </div>
+            <div class="resource-item">
+                <div class="icon-circle"><i class="fas fa-lungs"></i></div>
+                <div style="font-size:12px; font-weight:800; color:#b2bec3;">OXYGEN CYLINDERS</div>
+                <div class="res-count" id="count-oxy">0</div>
+                <div class="status-text available" id="status-oxy">Status: Available</div>
+                <div class="btn-group" id="group-oxy"><button class="btn yes" onclick="setResource('oxy', 'yes')">YES</button><button class="btn no active" onclick="setResource('oxy', 'no')">NO</button></div>
+            </div>
+            <div class="resource-item">
+                <div class="icon-circle"><i class="fas fa-procedures"></i></div>
+                <div style="font-size:12px; font-weight:800; color:#b2bec3;">VENTILATORS</div>
+                <div class="res-count" id="count-vent">0</div>
+                <div class="status-text available" id="status-vent">Status: Available</div>
+                <div class="btn-group" id="group-vent"><button class="btn yes" onclick="setResource('vent', 'yes')">YES</button><button class="btn no active" onclick="setResource('vent', 'no')">NO</button></div>
+            </div>
+            <div class="resource-item">
+                <div class="icon-circle"><i class="fas fa-syringe"></i></div>
+                <div style="font-size:12px; font-weight:800; color:#b2bec3;">VACCINES</div>
+                <div class="res-count" id="count-vac">0</div>
+                <div class="status-text available" id="status-vac">Status: Available</div>
+                <div class="btn-group" id="group-vac"><button class="btn yes" onclick="setResource('vac', 'yes')">YES</button><button class="btn no active" onclick="setResource('vac', 'no')">NO</button></div>
+            </div>
+            <div class="card-footer">
+                <div class="footer-item"><div style="font-size:10px; opacity:0.7">BEDS</div><div class="footer-val" id="foot-bed">0</div></div>
+                <div class="footer-item"><div style="font-size:10px; opacity:0.7">OXYGEN</div><div class="footer-val" id="foot-oxy">0</div></div>
+                <div class="footer-item"><div style="font-size:10px; opacity:0.7">VENTS</div><div class="footer-val" id="foot-vent">0</div></div>
+                <div class="footer-item"><div style="font-size:10px; opacity:0.7">VACCINES</div><div class="footer-val" id="foot-vac">0</div></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CSV_DATA = `
+hospital_name,latitude,longitude,area,district,available_beds,total_ventilator,available_ventilator,total_oxygen_cylinder,available_oxygen_cylinder
+Government Thiruvallur District Hospital,12.7755,79.819,Thiruvallur Town,Thiruvallur,1049,42,29,4430,762
+Avadi Government Hospital,12.9304,80.3831,Tiruttani,Thiruvallur,52,29,8,2435,503
+Poonamallee Government Hospital,13.3813,79.7017,Avadi,Thiruvallur,1117,62,52,4628,2770
+Ambattur Government Hospital,12.6711,80.0204,Poonamallee,Thiruvallur,209,98,91,1468,906
+Tiruttani Government Hospital,12.9834,79.7353,Ambattur,Thiruvallur,264,260,67,801,693
+Gummidipoondi Government Hospital,13.39004,80.15627,Gummidipoondi,Thiruvallur,890,113,87,3192,203
+Ponneri Government Hospital,13.1179,79.8724,Ponneri,Thiruvallur,1434,291,163,2754,687
+Stanley Medical College,13.1075,80.2882,Royapuram,Chennai,1500,150,45,2500,1200
+Rajiv Gandhi Government General Hospital,13.0805,80.2764,Park Town,Chennai,2500,300,120,4000,1500
+Kilpauk Medical College,13.0790,80.2435,Kilpauk,Chennai,1200,110,60,1800,900
+Omandurar Government Estate,13.0645,80.2721,Triplicane,Chennai,500,50,20,800,350
+Adyar Cancer Institute,13.0036,80.2492,Adyar,Chennai,400,40,15,600,200
+Chengalpattu Medical College,12.6841,79.9840,Chengalpattu Town,Chengalpattu,1100,90,55,1500,700
+Tambaram Taluk Hospital,12.9249,80.1000,Tambaram,Chengalpattu,300,25,10,450,150
+Chromepet Government Hospital,12.9515,80.1408,Chromepet,Chengalpattu,250,20,5,300,100
+Kancheepuram District Head Quarters Hospital,12.8342,79.7036,Kancheepuram Town,Kancheepuram,800,60,30,1200,500
+Sriperumbudur Government Hospital,12.9692,79.9472,Sriperumbudur,Kancheepuram,150,15,8,250,80
+Walajabad Government Hospital,12.7936,79.8142,Walajabad,Kancheepuram,100,10,4,150,60
+Maduranthakam Government Hospital,12.5085,79.8858,Maduranthakam,Chengalpattu,120,12,6,180,70
+Chettinad Health City,12.7836,80.2227,Kelambakkam,Chengalpattu,600,80,40,900,400
+Gleneagles Global Health City,12.8972,80.2079,Perumbakkam,Chennai,450,70,35,800,300
+Apollo Proton Cancer Centre,12.9575,80.2452,Tharamani,Chennai,200,30,12,400,150
+MIOT International,13.0275,80.1872,Manapakkam,Chennai,500,60,25,750,300
+Sri Ramachandra Medical Centre,13.0335,80.1614,Porur,Chennai,800,100,50,1200,600
+Saveetha Medical College,13.0232,80.0152,Thandalam,Kancheepuram,700,90,45,1000,500
+`;
+        let globalData = [];
+        let activeHospital = { bed: 0, oxy: 0, vent: 0, vac: 0 };
+        let state = { bed: false, oxy: false, vent: false, vac: false };
+
+        window.onload = function() {
+            Papa.parse(CSV_DATA, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: function(results) { processData(results.data); } });
+            document.getElementById('searchInput').addEventListener('input', handleInput);
+            document.addEventListener('click', e => { if (!e.target.closest('.input-group')) document.getElementById('suggestionBox').style.display = 'none'; });
+        };
+        function processData(data) {
+            globalData = data.map(row => {
+                let dist = row.district ? String(row.district).trim() : "Unknown";
+                return { name: row.hospital_name, district: dist, bed: row.available_beds||0, oxy: row.available_oxygen_cylinder||0, vent: row.available_ventilator||0, vac: Math.floor((row.available_beds||0)*0.8) };
+            }).filter(item => item.name);
+            const select = document.getElementById('districtFilter');
+            [...new Set(globalData.map(d=>d.district))].sort().forEach(d => { const opt=document.createElement('option'); opt.value=d; opt.innerText=d; select.appendChild(opt); });
+        }
+        function handleInput() {
+            const val = this.value.toLowerCase(); const box = document.getElementById('suggestionBox');
+            if(val.length===0){ box.style.display='none'; return;}
+            const matches = globalData.filter(h => h.name.toLowerCase().includes(val) && (document.getElementById('districtFilter').value==="All" || h.district===document.getElementById('districtFilter').value));
+            matches.sort((a, b) => a.name.localeCompare(b.name));
+            if(matches.length>0){ box.innerHTML=''; matches.forEach(h=>{ const d=document.createElement('div'); d.className='suggestion-item'; d.innerText=h.name; d.onclick=()=>selectHospital(h); box.appendChild(d); }); box.style.display='block'; } else box.style.display='none';
+        }
+        function selectHospital(h) {
+            document.getElementById('searchInput').value=h.name; document.getElementById('suggestionBox').style.display='none'; document.getElementById('hospitalCard').style.display='block';
+            document.getElementById('dispName').innerText=h.name; document.getElementById('dispDistrict').innerText=h.district;
+            activeHospital = { bed: h.bed, oxy: h.oxy, vent: h.vent, vac: h.vac };
+            resetUI('bed'); resetUI('oxy'); resetUI('vent'); resetUI('vac'); updateFooter();
+        }
+        function resetUI(type) {
+            state[type] = false; updateDisplay(type, activeHospital[type], false);
+            const g = document.getElementById(`group-${type}`); g.querySelector('.yes').classList.remove('active'); g.querySelector('.no').classList.add('active');
+        }
+        function setResource(type, action) {
+            const g = document.getElementById(`group-${type}`);
+            if(action==='yes' && !state[type]) {
+                state[type]=true; updateDisplay(type, Math.max(0,activeHospital[type]-1), true);
+                g.querySelector('.yes').classList.add('active'); g.querySelector('.no').classList.remove('active');
+            } else if(action==='no' && state[type]) {
+                state[type]=false; updateDisplay(type, activeHospital[type], false);
+                g.querySelector('.no').classList.add('active'); g.querySelector('.yes').classList.remove('active');
+            }
+            updateFooter();
+        }
+        function updateDisplay(type, val, isNotAvail) {
+            const num = document.getElementById(`count-${type}`); const txt = document.getElementById(`status-${type}`);
+            num.innerText = val;
+            if(isNotAvail) { num.classList.add('reduced'); txt.innerText = "Status: Not Available"; txt.className = "status-text not-available"; }
+            else { num.classList.remove('reduced'); txt.innerText = "Status: Available"; txt.className = "status-text available"; }
+        }
+        function updateFooter() { ['bed','oxy','vent','vac'].forEach(t => { let v=activeHospital[t]; if(state[t]) v=Math.max(0,v-1); document.getElementById(`foot-${t}`).innerText=v; }); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+hospital_name,latitude,longitude,area,district,available_beds,total_ventilator,available_ventilator,total_oxygen_cylinder,available_oxygen_cylinder
+Government Thiruvallur District Hospital,12.7755,79.819,Thiruvallur Town,Thiruvallur,1049,42,29,4430,762
+Avadi Government Hospital,12.9304,80.3831,Tiruttani,Thiruvallur,52,29,8,2435,503
+Poonamallee Government Hospital,13.3813,79.7017,Avadi,Thiruvallur,1117,62,52,4628,2770
+Ambattur Government Hospital,12.6711,80.0204,Poonamallee,Thiruvallur,209,98,91,1468,906
+Tiruttani Government Hospital,12.9834,79.7353,Ambattur,Thiruvallur,264,260,67,801,693
+Gummidipoondi Government Hospital,13.39004,80.15627,Gummidipoondi,Thiruvallur,890,113,87,3192,203
+Ponneri Government Hospital,13.1179,79.8724,Ponneri,Thiruvallur,1434,291,163,2754,687
+Stanley Medical College,13.1075,80.2882,Royapuram,Chennai,1500,150,45,2500,1200
+Rajiv Gandhi Government General Hospital,13.0805,80.2764,Park Town,Chennai,2500,300,120,4000,1500
+Kilpauk Medical College,13.0790,80.2435,Kilpauk,Chennai,1200,110,60,1800,900
+Omandurar Government Estate,13.0645,80.2721,Triplicane,Chennai,500,50,20,800,350
+Adyar Cancer Institute,13.0036,80.2492,Adyar,Chennai,400,40,15,600,200
+Chengalpattu Medical College,12.6841,79.9840,Chengalpattu Town,Chengalpattu,1100,90,55,1500,700
+Tambaram Taluk Hospital,12.9249,80.1000,Tambaram,Chengalpattu,300,25,10,450,150
+Chromepet Government Hospital,12.9515,80.1408,Chromepet,Chengalpattu,250,20,5,300,100
+Kancheepuram District Head Quarters Hospital,12.8342,79.7036,Kancheepuram Town,Kancheepuram,800,60,30,1200,500
+Sriperumbudur Government Hospital,12.9692,79.9472,Sriperumbudur,Kancheepuram,150,15,8,250,80
+Walajabad Government Hospital,12.7936,79.8142,Walajabad,Kancheepuram,100,10,4,150,60
+Maduranthakam Government Hospital,12.5085,79.8858,Maduranthakam,Chengalpattu,120,12,6,180,70
+Chettinad Health City,12.7836,80.2227,Kelambakkam,Chengalpattu,600,80,40,900,400
+Gleneagles Global Health City,12.8972,80.2079,Perumbakkam,Chennai,450,70,35,800,300
+Apollo Proton Cancer Centre,12.9575,80.2452,Tharamani,Chennai,200,30,12,400,150
+MIOT International,13.0275,80.1872,Manapakkam,Chennai,500,60,25,750,300
+Sri Ramachandra Medical Centre,13.0335,80.1614,Porur,Chennai,800,100,50,1200,600
+Saveetha Medical College,13.0232,80.0152,Thandalam,Kancheepuram,700,90,45,1000,500

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MECHAFORCE | Public Dashboard</title>
+    
+    <link rel="stylesheet" href="leaflet.min.css" />
+    <script src="leaflet.min.js"></script>
+    <script src="papaparse.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root { --primary: #008080; --secondary: #2c3e50; --danger: #d63031; --success: #00b894; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f1f2f6; display: flex; flex-direction: column; height: 100vh; }
+        
+        .nav-bar { background: var(--secondary); padding: 10px 20px; color: white; display: flex; align-items: center; justify-content: space-between; }
+        .home-btn { color: white; text-decoration: none; font-weight: bold; }
+
+        .main-content { padding: 20px; flex: 1; overflow-y: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-left: 5px solid var(--primary); }
+        .card h3 { margin: 0; font-size: 28px; color: var(--secondary); }
+        
+        #map { height: 520px; width: 100%; border-radius: 12px; border: 4px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-bottom: 20px; min-height: 400px; }
+        .map-legend { position: absolute; bottom: 25px; left: 15px; z-index: 1000; background: white; padding: 10px 16px; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); font-size: 12px; font-weight: 600; display: flex; gap: 16px; align-items: center; }
+        .map-legend span { display: flex; align-items: center; gap: 6px; }
+        .map-legend .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .map-legend .dot.green { background: #00b894; }
+        .map-legend .dot.red { background: #d63031; }
+        .map-wrapper { position: relative; margin-bottom: 20px; }
+        
+        .search-group { display: flex; gap: 10px; position: relative; }
+        select, input { padding: 10px; border-radius: 20px; border: 1px solid #ddd; outline: none; }
+        
+        .suggestion-box { position: absolute; top: 100%; right: 0; width: 250px; background: white; border: 1px solid #ddd; z-index: 1000; display: none; }
+        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .suggestion-item:hover { background: #f0f0f0; }
+
+        table { width: 100%; background: white; border-collapse: collapse; border-radius: 12px; overflow: hidden; }
+        th { background: var(--secondary); color: white; padding: 12px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        .status-badge { padding: 5px 10px; border-radius: 15px; font-weight: bold; font-size: 12px; }
+        .status-ok { background: #daf5e6; color: #00b894; }
+        .status-crit { background: #fadbd8; color: #c0392b; }
+    </style>
+</head>
+<body>
+
+    <div class="nav-bar">
+        <a href="index.html" class="home-btn"><i class="fas fa-arrow-left"></i> Home</a>
+        <div>PUBLIC DASHBOARD</div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h2>Resource Allocation Map</h2>
+            <div class="search-group">
+                <select id="districtFilter" onchange="filterData()"><option value="All">All Districts</option></select>
+                <div>
+                    <input type="text" id="searchPad" placeholder="Search Hospital..." oninput="handleSearch()">
+                    <div id="suggestionBox" class="suggestion-box"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="card"> <h3 id="val-hospitals">0</h3> <p>Hospitals</p> </div>
+            <div class="card"> <h3 id="val-beds">0</h3> <p>Beds</p> </div>
+            <div class="card"> <h3 id="val-oxy">0</h3> <p>Oxygen</p> </div>
+            <div class="card"> <h3 id="val-vent">0</h3> <p>Vents</p> </div>
+        </div>
+
+        <div class="map-wrapper">
+            <div id="map"></div>
+            <div class="map-legend">
+                <span><i class="dot green"></i> Good (≥50 beds)</span>
+                <span><i class="dot red"></i> Critical (&lt;50 beds)</span>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead><tr><th>Hospital</th><th>District</th><th>Beds</th><th>Oxygen</th><th>Vents</th><th>Status</th></tr></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const CSV_DATA = `
+hospital_name,latitude,longitude,area,district,available_beds,total_ventilator,available_ventilator,total_oxygen_cylinder,available_oxygen_cylinder
+Government Thiruvallur District Hospital,12.7755,79.819,Thiruvallur Town,Thiruvallur,1049,42,29,4430,762
+Avadi Government Hospital,12.9304,80.3831,Tiruttani,Thiruvallur,52,29,8,2435,503
+Poonamallee Government Hospital,13.3813,79.7017,Avadi,Thiruvallur,1117,62,52,4628,2770
+Ambattur Government Hospital,12.6711,80.0204,Poonamallee,Thiruvallur,209,98,91,1468,906
+Tiruttani Government Hospital,12.9834,79.7353,Ambattur,Thiruvallur,264,260,67,801,693
+Gummidipoondi Government Hospital,13.39004,80.15627,Gummidipoondi,Thiruvallur,890,113,87,3192,203
+Ponneri Government Hospital,13.1179,79.8724,Ponneri,Thiruvallur,1434,291,163,2754,687
+Stanley Medical College,13.1075,80.2882,Royapuram,Chennai,1500,150,45,2500,1200
+Rajiv Gandhi Government General Hospital,13.0805,80.2764,Park Town,Chennai,2500,300,120,4000,1500
+Kilpauk Medical College,13.0790,80.2435,Kilpauk,Chennai,1200,110,60,1800,900
+Omandurar Government Estate,13.0645,80.2721,Triplicane,Chennai,500,50,20,800,350
+Adyar Cancer Institute,13.0036,80.2492,Adyar,Chennai,400,40,15,600,200
+Chengalpattu Medical College,12.6841,79.9840,Chengalpattu Town,Chengalpattu,1100,90,55,1500,700
+Tambaram Taluk Hospital,12.9249,80.1000,Tambaram,Chengalpattu,300,25,10,450,150
+Chromepet Government Hospital,12.9515,80.1408,Chromepet,Chengalpattu,250,20,5,300,100
+Kancheepuram District Head Quarters Hospital,12.8342,79.7036,Kancheepuram Town,Kancheepuram,800,60,30,1200,500
+Sriperumbudur Government Hospital,12.9692,79.9472,Sriperumbudur,Kancheepuram,150,15,8,250,80
+Walajabad Government Hospital,12.7936,79.8142,Walajabad,Kancheepuram,100,10,4,150,60
+Maduranthakam Government Hospital,12.5085,79.8858,Maduranthakam,Chengalpattu,120,12,6,180,70
+Chettinad Health City,12.7836,80.2227,Kelambakkam,Chengalpattu,600,80,40,900,400
+Gleneagles Global Health City,12.8972,80.2079,Perumbakkam,Chennai,450,70,35,800,300
+Apollo Proton Cancer Centre,12.9575,80.2452,Tharamani,Chennai,200,30,12,400,150
+MIOT International,13.0275,80.1872,Manapakkam,Chennai,500,60,25,750,300
+Sri Ramachandra Medical Centre,13.0335,80.1614,Porur,Chennai,800,100,50,1200,600
+Saveetha Medical College,13.0232,80.0152,Thandalam,Kancheepuram,700,90,45,1000,500
+`;
+        let map, markersLayer, globalData = [], markerByKey = {};
+
+        const redIcon = new L.Icon({ iconUrl: 'marker-icon-red.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34] });
+        const greenIcon = new L.Icon({ iconUrl: 'marker-icon-green.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34] });
+
+        window.onload = () => {
+            map = L.map('map', { scrollWheelZoom: true }).setView([13.00, 80.00], 9);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>' }).addTo(map);
+            markersLayer = L.layerGroup().addTo(map);
+            
+            Papa.parse(CSV_DATA, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: (res) => processData(res.data) });
+            
+            document.addEventListener('click', e => { if(!e.target.closest('#searchPad')) document.getElementById('suggestionBox').style.display = 'none'; });
+        };
+
+        function processData(data) {
+            globalData = data.map(r => ({
+                name: r.hospital_name,
+                area: (r.area && String(r.area).trim()) || "Unknown",
+                district: (r.district && String(r.district).trim()) || "Unknown",
+                bed: r.available_beds||0, oxy: r.available_oxygen_cylinder||0, vent: r.available_ventilator||0,
+                lat: r.latitude, lon: r.longitude
+            })).filter(i => i.name);
+            
+            const dists = [...new Set(globalData.map(d=>d.district))].sort();
+            dists.forEach(d => { const o=document.createElement('option'); o.value=d; o.innerText=d; document.getElementById('districtFilter').appendChild(o); });
+            render(globalData);
+        }
+
+        function popupContent(h) {
+            const isCrit = h.bed < 50;
+            const status = isCrit ? 'Critical' : 'Good';
+            const statusCl = isCrit ? 'status-crit' : 'status-ok';
+            return `<div style="min-width:200px;font-family:Segoe UI,sans-serif;">
+                <strong style="font-size:14px;">${h.name}</strong><br>
+                <span style="color:#666;font-size:12px;">${h.area}, ${h.district}</span><br>
+                <div style="margin-top:8px;font-size:13px;">
+                    Beds: <b>${h.bed}</b> &nbsp;|&nbsp; Oxygen: <b>${h.oxy}</b> &nbsp;|&nbsp; Vents: <b>${h.vent}</b>
+                </div>
+                <span class="status-badge ${statusCl}" style="display:inline-block;margin-top:6px;">${status}</span>
+            </div>`;
+        }
+
+        function fitMapToMarkers(dataWithCoords) {
+            if (!dataWithCoords.length) return;
+            const valid = dataWithCoords.filter(h => h.lat != null && h.lon != null && !isNaN(h.lat) && !isNaN(h.lon));
+            if (valid.length === 0) return;
+            if (valid.length === 1) {
+                map.setView([valid[0].lat, valid[0].lon], 14);
+                return;
+            }
+            const bounds = L.latLngBounds(valid.map(h => [h.lat, h.lon]));
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        }
+
+        function render(data) {
+            let b=0, o=0, v=0;
+            data.forEach(d => { b+=d.bed; o+=d.oxy; v+=d.vent; });
+            document.getElementById('val-hospitals').innerText = data.length;
+            document.getElementById('val-beds').innerText = b;
+            document.getElementById('val-oxy').innerText = o;
+            document.getElementById('val-vent').innerText = v;
+
+            markersLayer.clearLayers();
+            markerByKey = {};
+            document.getElementById('tableBody').innerHTML = '';
+
+            const withCoords = [];
+            data.forEach(h => {
+                if(h.lat && h.lon && !isNaN(h.lat) && !isNaN(h.lon)) {
+                    withCoords.push(h);
+                    const isCrit = h.bed < 50;
+                    const m = L.marker([h.lat, h.lon], { icon: isCrit ? redIcon : greenIcon });
+                    m.bindPopup(popupContent(h));
+                    markersLayer.addLayer(m);
+                    markerByKey[h.name] = m;
+                }
+                if(data.length <= 100) {
+                    const isCrit = h.bed < 50;
+                    document.getElementById('tableBody').innerHTML += `<tr><td>${h.name}</td><td>${h.district}</td><td>${h.bed}</td><td>${h.oxy}</td><td>${h.vent}</td><td><span class="status-badge ${isCrit?'status-crit':'status-ok'}">${isCrit?'Critical':'Good'}</span></td></tr>`;
+                }
+            });
+            fitMapToMarkers(withCoords);
+        }
+
+        function filterData() {
+            const s = document.getElementById('searchPad').value.toLowerCase();
+            const d = document.getElementById('districtFilter').value;
+            const res = globalData.filter(h => h.name.toLowerCase().includes(s) && (d==='All' || h.district===d));
+            render(res);
+        }
+
+        function handleSearch() {
+            const val = document.getElementById('searchPad').value.toLowerCase();
+            const box = document.getElementById('suggestionBox');
+            if(!val) { box.style.display='none'; filterData(); return; }
+            
+            const matches = globalData.filter(h => h.name.toLowerCase().includes(val));
+            matches.sort((a,b) => a.name.localeCompare(b.name));
+            
+            box.innerHTML = '';
+            matches.forEach(h => {
+                const d = document.createElement('div');
+                d.className = 'suggestion-item'; d.innerText = h.name;
+                d.onclick = () => { 
+                    document.getElementById('searchPad').value = h.name; 
+                    box.style.display='none'; 
+                    filterData(); 
+                    if (h.lat != null && h.lon != null && markerByKey[h.name]) {
+                        map.flyTo([h.lat, h.lon], 14, { duration: 0.6 });
+                        setTimeout(() => markerByKey[h.name].openPopup(), 650);
+                    }
+                };
+                box.appendChild(d);
+            });
+            box.style.display = 'block';
+            filterData();
+        }
+    </script>
+</body>
+</html>
